@@ -99,6 +99,13 @@ def get_llm_client(provider: str, model: str, **kwargs):
         module = importlib.import_module('llm.ollama_client')
         ClientClass = getattr(module, 'OllamaClient')
         return ClientClass(model=model, base_url=base_url)
+    if provider in ('vllm',):
+        # vLLM exposes an OpenAI-compatible API server, defaulting to http://localhost:8000/v1
+        base_url = (kwargs.get('base_url') or 'http://localhost:8000/v1')
+        module = importlib.import_module('llm.openai_client')
+        ClientClass = getattr(module, 'OpenAIClient')
+        # API key is typically not required for local vLLM; pass through if provided
+        return ClientClass(model=model, api_key=kwargs.get('api_key'), base_url=base_url)
     raise ValueError(f"Unknown LLM provider: {provider}")
 
 
@@ -109,10 +116,10 @@ def parse_args():
     parser.add_argument('--retriever', type=str, default='smith_waterman', help='Retrieval method: smith_waterman|bm25|embedding')
     parser.add_argument('--top-k', type=int, default=5, help='Top K keywords to include in prompt')
 
-    parser.add_argument('--llm-provider', type=str, default='openai', help='LLM provider: openai|openai_compat|ollama')
+    parser.add_argument('--llm-provider', type=str, default='openai', help='LLM provider: openai|openai_compat|ollama|vllm')
     parser.add_argument('--llm-model', type=str, default='gpt-4o-mini', help='LLM model name')
     parser.add_argument('--api-key', type=str, default=None, help='API key for OpenAI or compatible providers')
-    parser.add_argument('--base-url', type=str, default=None, help='Base URL for OpenAI-compatible or Ollama')
+    parser.add_argument('--base-url', type=str, default=None, help='Base URL for OpenAI-compatible, vLLM or Ollama')
     parser.add_argument('--embedding-model', type=str, default='sentence-transformers/paraphrase-MiniLM-L6-v2', help='Embedding model for embedding retriever')
 
     parser.add_argument('--max-keywords-in-prompt', type=int, default=None, help='Optional cap for number of keywords inserted into prompt')
